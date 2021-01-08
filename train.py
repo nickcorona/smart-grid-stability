@@ -255,25 +255,27 @@ print(f"ending score: {best_score:.4f}")
 print(
     f"dropped features: {unimportant_features if len(unimportant_features) > 0 else None}"
 )
+feature_elimination = len(unimportant_features) > 0
 
-X = X.drop(unimportant_features, axis=1)
-Xt, Xv, yt, yv = train_test_split(
-    X, y, random_state=SEED
-)  # split into train and validation set
-Xs, ys = Xt.loc[sample_idx], yt.loc[sample_idx]
-dt = lgb.Dataset(Xt, yt, silent=True)
-ds = lgb.Dataset(Xs, ys, silent=True)
-dv = lgb.Dataset(Xv, yv, silent=True)
+if feature_elimination:
+    X = X.drop(unimportant_features, axis=1)
+    Xt, Xv, yt, yv = train_test_split(
+        X, y, random_state=SEED
+    )  # split into train and validation set
+    Xs, ys = Xt.loc[sample_idx], yt.loc[sample_idx]
+    dt = lgb.Dataset(Xt, yt, silent=True)
+    ds = lgb.Dataset(Xs, ys, silent=True)
+    dv = lgb.Dataset(Xv, yv, silent=True)
 
-model = lgb.train(
-    params,
-    dt,
-    valid_sets=[dt, dv],
-    valid_names=["training", "valid"],
-    num_boost_round=MAX_ROUNDS,
-    early_stopping_rounds=EARLY_STOPPING_ROUNDS,
-    verbose_eval=REPORT_ROUNDS,
-)
+    model = lgb.train(
+        params,
+        dt,
+        valid_sets=[dt, dv],
+        valid_names=["training", "valid"],
+        num_boost_round=MAX_ROUNDS,
+        early_stopping_rounds=EARLY_STOPPING_ROUNDS,
+        verbose_eval=REPORT_ROUNDS,
+    )
 
 import optuna.integration.lightgbm as lgb
 
