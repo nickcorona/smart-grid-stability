@@ -13,7 +13,7 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 from helpers import encode_dates, loguniform
 
 df = pd.read_csv(
-    r"data/train.csv",
+    r"data\smart_grid_stability_augmented.csv",
     parse_dates=[],
     index_col=[],
 )
@@ -24,24 +24,27 @@ print(
     .sort_values(["dtype", "proportion unique"])
 )
 
-y = df["Survived"]
+y = df["stabf"]
 X = df.drop(
-    [
-        "Survived",
-    ],
+    ["stabf", "stab"],
     axis=1,
 )
 
 X.info()
 
-encode_columns = ["Cabin", "Ticket", "Name"]
-enc = SimilarityEncoder(similarity="ngram", categories="k-means", n_prototypes=5)
-for col in encode_columns:
-    transformed_values = enc.fit_transform(X[col].values.reshape(-1, 1))
-    transformed_values = pd.DataFrame(transformed_values, index=X.index)
-    transformed_values.columns = [f"{col}_" + str(num) for num in transformed_values]
-    X = pd.concat([X, transformed_values], axis=1)
-    X = X.drop(col, axis=1)
+ENCODE = False
+
+if ENCODE:
+    encode_columns = []
+    enc = SimilarityEncoder(similarity="ngram", categories="k-means", n_prototypes=5)
+    for col in encode_columns:
+        transformed_values = enc.fit_transform(X[col].values.reshape(-1, 1))
+        transformed_values = pd.DataFrame(transformed_values, index=X.index)
+        transformed_values.columns = [
+            f"{col}_" + str(num) for num in transformed_values
+        ]
+        X = pd.concat([X, transformed_values], axis=1)
+        X = X.drop(col, axis=1)
 
 obj_cols = X.select_dtypes("object").columns
 X[obj_cols] = X[obj_cols].astype("category")
@@ -306,7 +309,7 @@ model = lgb.train(
 )
 
 lgb.plot_importance(model, importance_type="gain", grid=False, figsize=(10, 5))
-plt.savefig('figures/feature_importance.png')
+plt.savefig("figures/feature_importance.png")
 
 from sklearn.metrics import accuracy_score
 
