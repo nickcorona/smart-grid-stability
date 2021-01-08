@@ -33,7 +33,6 @@ X = df.drop(
 X.info()
 
 ENCODE = False
-
 if ENCODE:
     encode_columns = []
     enc = SimilarityEncoder(similarity="ngram", categories="k-means", n_prototypes=5)
