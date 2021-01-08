@@ -69,7 +69,7 @@ METRIC = "binary_logloss"
 MAXIMIZE = False
 EARLY_STOPPING_ROUNDS = 10
 MAX_ROUNDS = 10000
-REPORT_ROUNDS = 1
+REPORT_ROUNDS = 100
 
 params = {
     "objective": OBJECTIVE,
@@ -95,7 +95,7 @@ plt.show()
 best_etas = {"learning_rate": [], "score": []}
 
 for _ in range(30):
-    eta = loguniform(-3, 1)
+    eta = loguniform(-1, 0)
     best_etas["learning_rate"].append(eta)
     params["learning_rate"] = eta
     model = lgb.train(
@@ -155,63 +155,65 @@ upper = upper.stack()
 high_upper = upper[(abs(upper) > threshold)]
 abs_high_upper = abs(high_upper).sort_values(ascending=False)
 pairs = abs_high_upper.index.to_list()
-print(f"Correlated features: {pairs if len(pairs) > 0 else None}")
+correlation = len(pairs) > 0
+print(f"Correlated features: {pairs if correlation else None}")
 
-# drop correlated features
-best_score = model.best_score["valid"][METRIC]
-print(f"starting score: {best_score:.4f}")
-drop_dict = {pair: [] for pair in pairs}
-correlated_features = set()
-for pair in pairs:
-    for feature in pair:
-        correlated_features.add(feature)
-        Xt, Xv, yt, yv = train_test_split(
-            X.drop(correlated_features, axis=1), y, random_state=SEED
-        )
-        Xs, ys = Xt.loc[sample_idx], yt.loc[sample_idx]
-        dt = ds = lgb.Dataset(Xt, yt, silent=True)
-        dv = lgb.Dataset(Xv, yv, silent=True)
-        drop_model = lgb.train(
-            params,
-            dt,
-            valid_sets=[dt, dv],
-            valid_names=["training", "valid"],
-            num_boost_round=MAX_ROUNDS,
-            early_stopping_rounds=EARLY_STOPPING_ROUNDS,
-            verbose_eval=False,
-        )
-        drop_dict[pair].append(drop_model.best_score["valid"][METRIC])
-        correlated_features.remove(feature)  # remove from drop list
-    pair_min = np.min(drop_dict[pair])
-    if pair_min <= best_score:
-        drop_feature = pair[
-            np.argmin(drop_dict[pair])
-        ]  # add to drop_feature the one that reduces score
-        best_score = pair_min
-        correlated_features.add(drop_feature)
-print(f"ending score: {best_score:.4f}")
-print(
-    f"dropped features: {correlated_features if len(correlated_features) > 0 else None}"
-)
+if correlation:
+    # drop correlated features
+    best_score = model.best_score["valid"][METRIC]
+    print(f"starting score: {best_score:.4f}")
+    drop_dict = {pair: [] for pair in pairs}
+    correlated_features = set()
+    for pair in pairs:
+        for feature in pair:
+            correlated_features.add(feature)
+            Xt, Xv, yt, yv = train_test_split(
+                X.drop(correlated_features, axis=1), y, random_state=SEED
+            )
+            Xs, ys = Xt.loc[sample_idx], yt.loc[sample_idx]
+            dt = ds = lgb.Dataset(Xt, yt, silent=True)
+            dv = lgb.Dataset(Xv, yv, silent=True)
+            drop_model = lgb.train(
+                params,
+                dt,
+                valid_sets=[dt, dv],
+                valid_names=["training", "valid"],
+                num_boost_round=MAX_ROUNDS,
+                early_stopping_rounds=EARLY_STOPPING_ROUNDS,
+                verbose_eval=False,
+            )
+            drop_dict[pair].append(drop_model.best_score["valid"][METRIC])
+            correlated_features.remove(feature)  # remove from drop list
+        pair_min = np.min(drop_dict[pair])
+        if pair_min <= best_score:
+            drop_feature = pair[
+                np.argmin(drop_dict[pair])
+            ]  # add to drop_feature the one that reduces score
+            best_score = pair_min
+            correlated_features.add(drop_feature)
+    print(f"ending score: {best_score:.4f}")
+    print(
+        f"dropped features: {correlated_features if len(correlated_features) > 0 else None}"
+    )
 
-X = X.drop(correlated_features, axis=1)
-Xt, Xv, yt, yv = train_test_split(
-    X, y, random_state=SEED
-)  # split into train and validation set
-Xs, ys = Xt.loc[sample_idx], yt.loc[sample_idx]
-dt = lgb.Dataset(Xt, yt, silent=True)
-ds = lgb.Dataset(Xs, ys, silent=True)
-dv = lgb.Dataset(Xv, yv, silent=True)
+    X = X.drop(correlated_features, axis=1)
+    Xt, Xv, yt, yv = train_test_split(
+        X, y, random_state=SEED
+    )  # split into train and validation set
+    Xs, ys = Xt.loc[sample_idx], yt.loc[sample_idx]
+    dt = lgb.Dataset(Xt, yt, silent=True)
+    ds = lgb.Dataset(Xs, ys, silent=True)
+    dv = lgb.Dataset(Xv, yv, silent=True)
 
-model = lgb.train(
-    params,
-    dt,
-    valid_sets=[dt, dv],
-    valid_names=["training", "valid"],
-    num_boost_round=MAX_ROUNDS,
-    early_stopping_rounds=EARLY_STOPPING_ROUNDS,
-    verbose_eval=REPORT_ROUNDS,
-)
+    model = lgb.train(
+        params,
+        dt,
+        valid_sets=[dt, dv],
+        valid_names=["training", "valid"],
+        num_boost_round=MAX_ROUNDS,
+        early_stopping_rounds=EARLY_STOPPING_ROUNDS,
+        verbose_eval=REPORT_ROUNDS,
+    )
 
 sorted_features = [
     feature
