@@ -1,1 +1,1 @@
-kaggle competitions download -c titanic
+kaggle datasets download -d pcbreviglieri/smart-grid-stability
