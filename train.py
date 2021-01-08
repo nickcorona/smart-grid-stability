@@ -33,7 +33,6 @@ X = df.drop(
 X.info()
 
 ENCODE = False
-CATEGORIZE = False
 
 if ENCODE:
     encode_columns = []
@@ -47,6 +46,7 @@ if ENCODE:
         X = pd.concat([X, transformed_values], axis=1)
         X = X.drop(col, axis=1)
 
+CATEGORIZE = False
 if CATEGORIZE:
     obj_cols = X.select_dtypes("object").columns
     X[obj_cols] = X[obj_cols].astype("category")
