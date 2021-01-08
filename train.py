@@ -24,7 +24,7 @@ print(
     .sort_values(["dtype", "proportion unique"])
 )
 
-y = df["stabf"]
+y = df["stabf"].replace(["unstable", "stable"], [0, 1])
 X = df.drop(
     ["stabf", "stab"],
     axis=1,
@@ -33,6 +33,7 @@ X = df.drop(
 X.info()
 
 ENCODE = False
+CATEGORIZE = False
 
 if ENCODE:
     encode_columns = []
@@ -46,8 +47,9 @@ if ENCODE:
         X = pd.concat([X, transformed_values], axis=1)
         X = X.drop(col, axis=1)
 
-obj_cols = X.select_dtypes("object").columns
-X[obj_cols] = X[obj_cols].astype("category")
+if CATEGORIZE:
+    obj_cols = X.select_dtypes("object").columns
+    X[obj_cols] = X[obj_cols].astype("category")
 
 SEED = 0
 SAMPLE_SIZE = 5000
